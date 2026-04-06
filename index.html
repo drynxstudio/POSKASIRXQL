@@ -3,160 +3,271 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kasir & Stok Wijaya</title>
+  <title>Sistem POS & Inventori</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { background-color: #f4f6f9; }
-    .nav-tabs .nav-link { font-weight: bold; color: #555; }
-    .nav-tabs .nav-link.active { color: #0d6efd; }
-    .cart-container { max-height: 400px; overflow-y: auto; background: white; border-radius: 8px; }
+    .cart-container, .stock-container { max-height: 400px; overflow-y: auto; background: white; border-radius: 8px; }
+    
+    /* PENGATURAN KHUSUS PRINT */
+    @media print {
+      body * { visibility: hidden; }
+      #areaPrint, #areaPrint * { visibility: visible; }
+      #areaPrint { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+    
+    .struk { width: 300px; font-family: monospace; font-size: 14px; margin: 0 auto; color: black;}
+    .struk-header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+    .struk-table { width: 100%; border-collapse: collapse; }
+    .struk-table td { padding: 2px 0; }
   </style>
 </head>
-<body class="p-2 p-md-4">
+<body class="p-3">
 
-<div class="container-fluid">
-  <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+<div id="areaPrint" class="d-none"></div>
+
+<div class="container-fluid no-print">
+  <ul class="nav nav-tabs mb-4 fw-bold">
     <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-kasir">🛒 KASIR</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-stok">📦 TAMBAH BARANG</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-stok" onclick="renderTabelStok()">📦 INVENTORI & STOK</button></li>
   </ul>
 
   <div class="tab-content">
+    
     <div class="tab-pane fade show active" id="tab-kasir">
       <div class="row">
         <div class="col-md-5 mb-3">
           <div class="card p-3 shadow-sm border-0">
-            <h6>Input Barang</h6>
-            <button id="btnScanner" class="btn btn-outline-primary w-100 mb-3" onclick="toggleScanner()">📸 Buka Scanner</button>
-            <div id="reader" style="display:none; width:100%;"></div>
-            <div class="input-group mb-3">
-              <input type="text" id="barcodeInput" class="form-control" placeholder="Scan / Ketik Kode">
-              <button class="btn btn-primary" onclick="tambahKeKeranjangManual()">Tambah</button>
-            </div>
-            <select id="produkSelect" class="form-select" onchange="tambahViaSelect()"><option value="">-- Muat Data... --</option></select>
+            <h6>Transaksi Penjualan</h6>
+            <button id="btnScannerKasir" class="btn btn-outline-primary w-100 mb-3" onclick="toggleScanner('kasir')">📸 Scan Barcode Belanja</button>
+            <div id="reader-kasir" style="display:none; width:100%;"></div>
+            
+            <input type="text" id="barcodeInput" class="form-control mb-3" placeholder="Scan alat / Ketik kode...">
           </div>
         </div>
         <div class="col-md-7">
           <div class="card p-3 shadow-sm border-0">
-            <h6>Keranjang</h6>
-            <div class="cart-container border p-2 mb-2"><table class="table align-middle"><tbody id="keranjangBody"></tbody></table></div>
-            <div class="d-flex justify-content-between fw-bold h5 p-2 bg-dark text-success rounded"><span>TOTAL:</span><span id="grandTotal">Rp 0</span></div>
-            <button id="btnBayar" class="btn btn-success w-100 py-3 mt-2 fw-bold" onclick="prosesBayar()">PROSES BAYAR</button>
+            <h6>Keranjang (<span id="itemCount">0</span> barang)</h6>
+            <div class="cart-container border p-2 mb-2">
+              <table class="table align-middle"><tbody id="keranjangBody"></tbody></table>
+            </div>
+            <div class="d-flex justify-content-between fw-bold h5 p-2 bg-dark text-success rounded">
+              <span>TOTAL:</span><span id="grandTotal">Rp 0</span>
+            </div>
+            <button id="btnBayar" class="btn btn-success w-100 py-3 mt-2 fw-bold" onclick="prosesBayar()">BAYAR & CETAK STRUK</button>
           </div>
         </div>
       </div>
     </div>
 
     <div class="tab-pane fade" id="tab-stok">
-      <div class="card p-4 shadow-sm border-0 col-md-6 mx-auto">
-        <h5 class="mb-4">Daftarkan Produk Baru</h5>
-        <div class="mb-3"><label>Kode Barcode</label><input type="text" id="newKode" class="form-control" placeholder="Scan atau ketik kode barang"></div>
-        <div class="mb-3"><label>Nama Barang</label><input type="text" id="newNama" class="form-control" placeholder="Misal: Nasi Kotak Ayam"></div>
-        <div class="mb-3"><label>Harga Jual</label><input type="number" id="newHarga" class="form-control" placeholder="Misal: 25000"></div>
-        <button id="btnSimpanProduk" class="btn btn-primary w-100 py-2" onclick="simpanProdukKeSheet()">💾 SIMPAN KE DATABASE</button>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <div class="card p-3 shadow-sm border-0 bg-light">
+            <h6 class="mb-3">➕ Register Barang Baru</h6>
+            <button id="btnScannerStok" class="btn btn-outline-secondary w-100 mb-3" onclick="toggleScanner('stok')">📸 Scan Barcode Baru</button>
+            <div id="reader-stok" style="display:none; width:100%;"></div>
+            
+            <label class="small">Kode Barcode</label>
+            <input type="text" id="newKode" class="form-control mb-2">
+            <label class="small">Nama Barang</label>
+            <input type="text" id="newNama" class="form-control mb-2">
+            <div class="row">
+              <div class="col-7">
+                <label class="small">Harga Jual</label>
+                <input type="number" id="newHarga" class="form-control mb-2">
+              </div>
+              <div class="col-5">
+                <label class="small">Stok Awal</label>
+                <input type="number" id="newStok" class="form-control mb-3">
+              </div>
+            </div>
+            <button id="btnSimpanProduk" class="btn btn-primary w-100" onclick="simpanProdukKeSheet()">SIMPAN KE DATABASE</button>
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <div class="card p-3 shadow-sm border-0">
+            <div class="d-flex justify-content-between mb-2">
+              <h6>Database Barang (Ready Stock)</h6>
+              <button class="btn btn-sm btn-dark" onclick="printLaporanStok()">🖨️ Print Laporan Stok</button>
+            </div>
+            <div class="stock-container border p-2">
+              <table class="table table-sm table-striped">
+                <thead class="table-dark">
+                  <tr><th>Kode</th><th>Nama Barang</th><th>Harga</th><th>Sisa Stok</th></tr>
+                </thead>
+                <tbody id="tabelStokBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
+
   </div>
 </div>
 
 <script>
+  // ==========================================
   const API_URL = "https://script.google.com/macros/s/AKfycbz0l-OkGzMXhMc3RkLbbqpXoLSpzudoJVXxd4RLPybpvdUHDqP9v3zd53jvXM5XOSF2IQ/exec"; 
-  let daftarProduk = [];
-  let keranjang = [];
-  let html5QrcodeScanner;
+  // ==========================================
 
-  async function muatProduk() {
+  let daftarProduk = []; let keranjang = []; let html5QrcodeScanner;
+
+  // 1. Inisialisasi Data
+  window.onload = async () => {
     try {
       const response = await fetch(API_URL);
       const data = await response.json();
-      if(data.length > 0) {
-        daftarProduk = data.slice(1);
-        let select = document.getElementById('produkSelect');
-        select.innerHTML = '<option value="">-- Pilih Manual --</option>';
-        daftarProduk.forEach((p, i) => {
-          let opt = document.createElement('option');
-          opt.value = i; opt.text = `${p[1]} (Rp ${Number(p[2]).toLocaleString()})`;
-          select.add(opt);
-        });
-      }
-    } catch (e) { console.error("Gagal muat data"); }
-  }
+      if(data.length > 0) daftarProduk = data.slice(1);
+      renderTabelStok();
+    } catch (e) { alert("Gagal koneksi ke database."); }
+    
+    document.getElementById('barcodeInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') { tambahItem(e.target.value.trim()); e.target.value = ''; }
+    });
+  };
 
-  // SIMPAN BARANG BARU KE GOOGLE SHEETS
-  async function simpanProdukKeSheet() {
-    const kode = document.getElementById('newKode').value;
-    const nama = document.getElementById('newNama').value;
-    const harga = document.getElementById('newHarga').value;
-    if(!kode || !nama || !harga) return alert("Isi semua data!");
-
-    const btn = document.getElementById('btnSimpanProduk');
-    btn.innerHTML = "Menyimpan..."; btn.disabled = true;
-
-    try {
-      await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ tipe: "tambah_produk", kode, nama, harga })
+  // 2. Scanner Universal (Bisa untuk Kasir atau Input Stok)
+  function toggleScanner(mode) {
+    let rId = mode === 'kasir' ? 'reader-kasir' : 'reader-stok';
+    let reader = document.getElementById(rId);
+    
+    if (reader.style.display === 'none') {
+      reader.style.display = 'block';
+      html5QrcodeScanner = new Html5QrcodeScanner(rId, { fps: 10, qrbox: 250 });
+      html5QrcodeScanner.render((txt) => { 
+        if(mode === 'kasir') { tambahItem(txt); } 
+        else { document.getElementById('newKode').value = txt; html5QrcodeScanner.clear(); reader.style.display = 'none'; }
       });
-      alert("Barang berhasil didaftarkan!");
-      document.getElementById('newKode').value = ""; document.getElementById('newNama').value = ""; document.getElementById('newHarga').value = "";
-      muatProduk(); // Refresh daftar produk di kasir
-    } catch (e) { alert("Gagal koneksi"); }
-    btn.innerHTML = "💾 SIMPAN KE DATABASE"; btn.disabled = false;
+    } else { html5QrcodeScanner.clear(); reader.style.display = 'none'; }
   }
 
-  // FUNGSI KASIR (SAMA SEPERTI SEBELUMNYA DENGAN TIPE: "transaksi")
-  async function prosesBayar() {
-    if (keranjang.length === 0) return alert("Kosong!");
-    const btn = document.getElementById('btnBayar');
-    btn.innerHTML = "Menyimpan..."; btn.disabled = true;
-    try {
-      await fetch(API_URL, { method: 'POST', body: JSON.stringify({ tipe: "transaksi", item: keranjang }) });
-      alert("Berhasil!"); keranjang = []; renderKeranjang();
-    } catch (e) { alert("Error"); }
-    btn.innerHTML = "PROSES BAYAR"; btn.disabled = false;
+  // 3. Logika Kasir & Keranjang
+  function tambahItem(kode) {
+    let item = daftarProduk.find(p => String(p[0]) === String(kode));
+    if (!item) return alert("Barang belum terdaftar di Inventori!");
+    if (Number(item[3]) < 1) return alert(`Stok ${item[1]} Habis!`); // Cek Stok
+
+    let ex = keranjang.find(k => k.kode === item[0]);
+    if (ex) { ex.qty++; ex.subtotal = ex.qty * ex.harga; }
+    else { keranjang.push({ kode: item[0], nama: item[1], harga: Number(item[2]), qty: 1, subtotal: Number(item[2]) }); }
+    renderKeranjang();
   }
 
-  // Fungsi pembantu lainnya (renderKeranjang, tambahItem, dll tetap sama)
-  window.onload = muatProduk;
   function renderKeranjang() {
     let html = ''; let total = 0;
     keranjang.forEach((item, i) => {
       total += item.subtotal;
-      html += `<tr><td>${item.nama}</td><td width="60"><input type="number" class="form-control p-1" value="${item.qty}" onchange="updateQty(${i}, this.value)"></td><td>${item.subtotal.toLocaleString()}</td><td><button class="btn btn-sm text-danger" onclick="hapusItem(${i})">X</button></td></tr>`;
+      html += `<tr><td>${item.nama}</td><td width="70"><input type="number" class="form-control p-1 text-center" value="${item.qty}" onchange="updateQty(${i}, this.value)"></td><td class="fw-bold">${item.subtotal.toLocaleString()}</td><td><button class="btn btn-sm btn-danger" onclick="hapusItem(${i})">X</button></td></tr>`;
     });
     document.getElementById('keranjangBody').innerHTML = html;
     document.getElementById('grandTotal').innerText = "Rp " + total.toLocaleString();
+    document.getElementById('itemCount').innerText = keranjang.length;
   }
-  function tambahKeKeranjangManual() {
-    let inp = document.getElementById('barcodeInput');
-    if (inp.value) { tambahItem(inp.value.trim(), 'kode'); inp.value = ''; }
-  }
-  function tambahViaSelect() {
-    let sel = document.getElementById('produkSelect');
-    if (sel.value !== "") { tambahItem(sel.value, 'index'); sel.value = ""; }
-  }
-  function updateQty(index, val) {
-    keranjang[index].qty = parseInt(val);
-    keranjang[index].subtotal = keranjang[index].qty * keranjang[index].harga;
-    renderKeranjang();
-  }
+  function updateQty(index, val) { keranjang[index].qty = parseInt(val); keranjang[index].subtotal = keranjang[index].qty * keranjang[index].harga; renderKeranjang(); }
   function hapusItem(index) { keranjang.splice(index, 1); renderKeranjang(); }
-  function tambahItem(kodeAtauIndex, tipe = 'kode') {
-    let item = tipe === 'kode' ? daftarProduk.find(p => String(p[0]) === String(kodeAtauIndex)) : daftarProduk[kodeAtauIndex];
-    if (item) {
-      let ex = keranjang.find(k => k.kode === item[0]);
-      if (ex) { ex.qty++; ex.subtotal = ex.qty * ex.harga; }
-      else { keranjang.push({ kode: item[0], nama: item[1], harga: Number(item[2]), qty: 1, subtotal: Number(item[2]) }); }
-      renderKeranjang();
-    } else { alert("Barang tidak ada di database. Daftarkan dulu di tab Tambah Barang."); }
+
+  // 4. Proses Bayar & Cetak Struk
+  async function prosesBayar() {
+    if (keranjang.length === 0) return alert("Keranjang kosong!");
+    document.getElementById('btnBayar').innerText = "Memproses...";
+    
+    try {
+      await fetch(API_URL, { method: 'POST', body: JSON.stringify({ tipe: "transaksi", item: keranjang }) });
+      cetakStruk(keranjang); // Panggil fungsi cetak struk
+      
+      // Update sisa stok di lokal agar tidak perlu refresh web
+      keranjang.forEach(k => { let p = daftarProduk.find(x => x[0] == k.kode); if(p) p[3] -= k.qty; });
+      keranjang = []; renderKeranjang();
+    } catch (e) { alert("Gagal transaksi!"); }
+    document.getElementById('btnBayar').innerText = "BAYAR & CETAK STRUK";
   }
-  function toggleScanner() {
-    let r = document.getElementById('reader');
-    if (r.style.display === 'none') {
-      r.style.display = 'block';
-      html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-      html5QrcodeScanner.render((txt) => { tambahItem(txt, 'kode'); });
-    } else { html5QrcodeScanner.clear(); r.style.display = 'none'; }
+
+  function cetakStruk(items) {
+    let area = document.getElementById('areaPrint');
+    let total = items.reduce((sum, i) => sum + i.subtotal, 0);
+    let date = new Date().toLocaleString('id-ID');
+    
+    let html = `
+    <div class="struk d-block">
+      <div class="struk-header">
+        <h4>WARUNG WIJAYA</h4>
+        <small>${date}</small>
+      </div>
+      <table class="struk-table">`;
+      
+    items.forEach(i => {
+      html += `<tr><td colspan="2">${i.nama}</td></tr>
+               <tr><td>${i.qty} x ${i.harga.toLocaleString()}</td><td align="right">${i.subtotal.toLocaleString()}</td></tr>`;
+    });
+
+    html += `
+      </table>
+      <hr style="border-top:1px dashed #000;">
+      <div style="text-align:right; font-weight:bold;">TOTAL: Rp ${total.toLocaleString()}</div>
+      <div style="text-align:center; margin-top:20px;">Terima Kasih</div>
+    </div>`;
+    
+    area.innerHTML = html;
+    area.classList.remove('d-none'); // Tampilkan area print
+    window.print(); // Memicu dialog print browser
+    area.classList.add('d-none'); // Sembunyikan lagi
+  }
+
+  // 5. Inventori: Register & Laporan
+  async function simpanProdukKeSheet() {
+    let data = {
+      tipe: "tambah_produk",
+      kode: document.getElementById('newKode').value,
+      nama: document.getElementById('newNama').value,
+      harga: document.getElementById('newHarga').value,
+      stok: document.getElementById('newStok').value
+    };
+    if(!data.kode || !data.nama || !data.harga || !data.stok) return alert("Lengkapi data!");
+
+    document.getElementById('btnSimpanProduk').innerText = "Menyimpan...";
+    try {
+      await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
+      daftarProduk.push([data.kode, data.nama, data.harga, data.stok]); // Tambah ke memori lokal
+      alert("Tersimpan!");
+      document.getElementById('newKode').value = ""; document.getElementById('newNama').value = ""; document.getElementById('newHarga').value = ""; document.getElementById('newStok').value = "";
+      renderTabelStok();
+    } catch (e) { alert("Gagal simpan"); }
+    document.getElementById('btnSimpanProduk').innerText = "SIMPAN KE DATABASE";
+  }
+
+  function renderTabelStok() {
+    let html = '';
+    daftarProduk.forEach(p => {
+      let warnaStok = p[3] < 5 ? 'text-danger fw-bold' : ''; // Merah jika stok tipis
+      html += `<tr><td><small>${p[0]}</small></td><td>${p[1]}</td><td>${Number(p[2]).toLocaleString()}</td><td class="${warnaStok}">${p[3]}</td></tr>`;
+    });
+    document.getElementById('tabelStokBody').innerHTML = html;
+  }
+
+  function printLaporanStok() {
+    let area = document.getElementById('areaPrint');
+    let date = new Date().toLocaleString('id-ID');
+    let html = `
+      <div style="padding:20px; font-family:sans-serif;">
+        <h3 style="text-align:center;">LAPORAN STOK BARANG READY</h3>
+        <p style="text-align:center;">Per Tanggal: ${date}</p>
+        <table border="1" cellpadding="5" style="width:100%; border-collapse:collapse; margin-top:20px;">
+          <tr><th>Kode Barcode</th><th>Nama Barang</th><th>Harga Jual</th><th>Sisa Stok</th></tr>`;
+          
+    daftarProduk.forEach(p => {
+      html += `<tr><td>${p[0]}</td><td>${p[1]}</td><td>Rp ${Number(p[2]).toLocaleString()}</td><td align="center">${p[3]}</td></tr>`;
+    });
+
+    html += `</table></div>`;
+    area.innerHTML = html;
+    area.classList.remove('d-none');
+    window.print();
+    area.classList.add('d-none');
   }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
