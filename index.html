@@ -3,141 +3,179 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POS Pro - Retail Edition</title>
+  <title>Wijaya POS v3 (Full Edition)</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: 'Poppins', sans-serif; background-color: #f3f4f6; }
+    body { font-family: 'Poppins', sans-serif; background-color: #f0f2f5; color: #2c3e50; }
     .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    .nav-pills .nav-link { font-weight: 600; color: #4b5563; }
-    .nav-pills .nav-link.active { background-color: #2563eb; }
-    .total-display { background: #1f2937; color: #10b981; padding: 15px; border-radius: 8px; font-size: 1.8rem; font-weight: bold; text-align: right; }
-    .cart-box { height: 280px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 15px; background: white;}
+    .nav-pills { background: white; padding: 10px; border-radius: 12px; display: inline-flex; overflow-x: auto; white-space: nowrap; }
+    .nav-pills .nav-link { color: #2c3e50; font-weight: 600; margin: 0 5px; border-radius: 8px; }
+    .nav-pills .nav-link.active { background-color: #0d6efd; color: white; }
+    .total-display { background: linear-gradient(135deg, #1e293b, #0f172a); color: #10b981; padding: 20px; border-radius: 12px; font-size: 2rem; font-weight: 700; text-align: right; }
     
     @media print {
       body * { display: none !important; }
       #printArea, #printArea * { display: block !important; visibility: visible !important; }
-      #printArea { position: absolute; left: 0; top: 0; width: 100%; font-family: monospace; font-size: 12px; color: black; background: white;}
+      #printArea { position: absolute; left: 0; top: 0; width: 100%; font-family: monospace; background: white; color: black; }
     }
   </style>
 </head>
-<body>
+<body class="p-3 p-md-4">
 
-<div class="container-fluid p-3">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="fw-bold text-primary m-0"><i class="bi bi-shop"></i> POS System</h4>
+<div class="container-fluid" style="max-width: 1400px; margin: auto;">
+  
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold m-0 text-primary"><i class="bi bi-shop"></i> Wijaya POS</h3>
     <div>
-      <button class="btn btn-sm btn-outline-warning fw-bold me-2" onclick="recallBill()"><i class="bi bi-arrow-clockwise"></i> Buka Hold Bill</button>
-      <span id="koneksiBadge" class="badge bg-secondary p-2">Menghubungkan...</span>
+      <span id="koneksiBadge" class="badge bg-warning p-2"><i class="bi bi-arrow-repeat"></i> Syncing...</span>
     </div>
   </div>
 
-  <ul class="nav nav-pills mb-3 bg-white p-2 rounded shadow-sm" id="mainTab">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#kasir">🛒 Kasir</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#inventori">📦 Inventori</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#supply">🚚 Restock</button></li>
+  <ul class="nav nav-pills mb-4 shadow-sm w-100" id="mainTab" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#kasir"><i class="bi bi-cart"></i> Kasir</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#inventori"><i class="bi bi-boxes"></i> Inventori</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#supply"><i class="bi bi-box-arrow-in-down"></i> Restock</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#riwayat"><i class="bi bi-receipt"></i> Riwayat</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#dashboard"><i class="bi bi-pie-chart"></i> Dashboard</button></li>
   </ul>
 
   <div class="tab-content">
     
     <div class="tab-pane fade show active" id="kasir">
-      <div class="row g-3">
+      <div class="row g-4">
         <div class="col-lg-4">
-          <div class="card p-3">
-            <div class="input-group mb-3">
-              <span class="input-group-text bg-primary text-white" onclick="startScan('reader-kasir')" style="cursor:pointer;"><i class="bi bi-upc-scan"></i> Scan</span>
-              <input type="text" id="manualInput" class="form-control" placeholder="Ketik Barcode / Nama">
-            </div>
-            <div id="reader-kasir" style="display:none;" class="mb-3"></div>
-
-            <div class="row g-2 mb-3">
-              <div class="col-6">
-                <label class="small text-muted fw-bold">Diskon Struk (Rp)</label>
-                <input type="number" id="inputDiskon" class="form-control form-control-sm" value="0" onkeyup="kalkulasiTotal()">
-              </div>
-              <div class="col-6">
-                <label class="small text-muted fw-bold">Pajak PPN (%)</label>
-                <input type="number" id="inputPajak" class="form-control form-control-sm" value="0" onkeyup="kalkulasiTotal()">
-              </div>
-            </div>
-
-            <label class="small text-muted fw-bold">Metode Pembayaran</label>
-            <select id="metodeBayar" class="form-select form-select-sm mb-3">
+          <div class="card p-4">
+            <h5 class="fw-bold mb-3">Input Barang</h5>
+            <button class="btn btn-outline-primary w-100 mb-3" onclick="startScan('reader-kasir')"><i class="bi bi-upc-scan"></i> Scan Barcode</button>
+            <div id="reader-kasir" class="mb-3" style="display:none; border-radius: 10px; overflow: hidden;"></div>
+            
+            <input type="text" id="manualInput" class="form-control bg-light border-0 mb-4" placeholder="Ketik Barcode lalu Enter...">
+            
+            <hr>
+            <h6 class="fw-bold text-muted">Pembayaran</h6>
+            
+            <label class="small fw-bold">Diskon Struk (Rp)</label>
+            <input type="number" id="inputDiskon" class="form-control form-control-sm mb-2" value="0" onkeyup="kalkulasiTotal()">
+            
+            <label class="small fw-bold">Metode Bayar</label>
+            <select id="metodeBayar" class="form-select form-select-sm mb-2">
               <option value="Tunai">Tunai / Cash</option>
               <option value="QRIS">QRIS / E-Wallet</option>
               <option value="Transfer">Transfer Bank</option>
             </select>
 
-            <label class="small text-muted fw-bold">Uang Diterima (Rp)</label>
-            <input type="number" id="uangBayar" class="form-control mb-2" placeholder="0" onkeyup="kalkulasiTotal()">
+            <label class="small fw-bold">Uang Diterima (Rp)</label>
+            <input type="number" id="uangBayar" class="form-control form-control-lg bg-light border-0 mb-3" placeholder="0" onkeyup="kalkulasiTotal()">
             
-            <div class="d-flex justify-content-between fw-bold h5">
-              <span>Kembali:</span>
-              <span id="uangKembali" class="text-danger">Rp 0</span>
+            <div class="d-flex justify-content-between h5 fw-bold">
+              <span>Kembalian:</span><span id="uangKembali" class="text-danger">Rp 0</span>
             </div>
           </div>
         </div>
 
         <div class="col-lg-8">
-          <div class="card p-3 h-100">
-            <div class="d-flex justify-content-between mb-2">
-              <h6 class="fw-bold m-0">Keranjang Belanja</h6>
+          <div class="card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="fw-bold m-0"><i class="bi bi-basket2"></i> Keranjang</h5>
               <div>
-                <button class="btn btn-sm btn-outline-secondary me-2" onclick="holdBill()"><i class="bi bi-pause-circle"></i> Tahan (Hold)</button>
-                <button class="btn btn-sm btn-outline-danger" onclick="voidBill()"><i class="bi bi-trash"></i> Batal (Void)</button>
+                <button class="btn btn-sm btn-outline-secondary me-2" onclick="holdBill()"><i class="bi bi-pause-circle"></i> Hold</button>
+                <button class="btn btn-sm btn-outline-success me-2" onclick="recallBill()"><i class="bi bi-play-circle"></i> Recall</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="voidBill()"><i class="bi bi-trash"></i> Void</button>
               </div>
             </div>
             
-            <div class="cart-box p-2">
-              <table class="table table-sm table-hover align-middle">
-                <thead class="table-light sticky-top"><tr><th>Item</th><th>Harga</th><th width="80">Qty</th><th>Subtotal</th><th></th></tr></thead>
+            <div class="table-responsive" style="height: 250px;">
+              <table class="table table-hover align-middle">
+                <thead class="table-light sticky-top"><tr><th>Item</th><th>Harga</th><th width="90">Qty</th><th>Subtotal</th><th></th></tr></thead>
                 <tbody id="cartTable"></tbody>
               </table>
             </div>
-
-            <div class="row px-2 mb-2 text-muted small fw-bold">
-              <div class="col-6">Subtotal: <span id="lblSubtotal">Rp 0</span></div>
-              <div class="col-6 text-end">Pajak: <span id="lblPajak">Rp 0</span> | Diskon: <span id="lblDiskon">Rp 0</span></div>
-            </div>
-
+            
+            <div class="text-muted small fw-bold text-end mb-2">Subtotal: <span id="lblSubtotal">Rp 0</span> | Diskon: <span id="lblDiskon">Rp 0</span></div>
             <div class="total-display mb-3" id="grandTotal">Rp 0</div>
-            <button class="btn btn-success w-100 py-3 fw-bold fs-5" id="btnCheckout" onclick="checkout()"><i class="bi bi-printer"></i> PROSES TRANSAKSI</button>
+            <button class="btn btn-success w-100 py-3 fw-bold fs-5" id="btnCheckout" onclick="checkout()"><i class="bi bi-printer"></i> PROSES & CETAK STRUK</button>
           </div>
         </div>
       </div>
     </div>
 
     <div class="tab-pane fade" id="inventori">
-      <div class="row g-3">
+      <div class="row g-4">
         <div class="col-md-4">
-          <div class="card p-3">
-            <h6>Register Barang Baru</h6>
-            <input type="text" id="regKode" class="form-control form-control-sm mb-2" placeholder="Kode Barcode">
-            <input type="text" id="regNama" class="form-control form-control-sm mb-2" placeholder="Nama">
-            <input type="number" id="regHarga" class="form-control form-control-sm mb-2" placeholder="Harga Jual">
-            <input type="number" id="regStok" class="form-control form-control-sm mb-3" placeholder="Stok Awal">
-            <button class="btn btn-primary btn-sm w-100" onclick="simpanBarangBaru()">Simpan Data</button>
+          <div class="card p-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-plus-circle"></i> Barang Baru</h5>
+            <button class="btn btn-outline-primary btn-sm w-100 mb-3" onclick="startScan('reader-reg')"><i class="bi bi-upc-scan"></i> Scan Barcode Baru</button>
+            <div id="reader-reg" style="display:none;" class="mb-3"></div>
+            
+            <input type="text" id="regKode" class="form-control mb-2" placeholder="Kode Barcode">
+            <input type="text" id="regNama" class="form-control mb-2" placeholder="Nama Barang">
+            <input type="number" id="regHarga" class="form-control mb-2" placeholder="Harga Jual">
+            <input type="number" id="regStok" class="form-control mb-3" placeholder="Stok Awal">
+            <button class="btn btn-primary w-100" onclick="simpanBarangBaru()">SIMPAN KE DATABASE</button>
           </div>
         </div>
         <div class="col-md-8">
-          <div class="card p-3">
-            <table class="table table-sm">
-              <thead class="table-dark"><tr><th>Kode</th><th>Nama</th><th>Harga</th><th>Stok</th></tr></thead>
-              <tbody id="inventoryTable"></tbody>
-            </table>
+          <div class="card p-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-server"></i> Stok Gudang</h5>
+            <div class="table-responsive" style="max-height: 400px;">
+              <table class="table table-sm table-hover align-middle">
+                <thead class="table-dark sticky-top"><tr><th>Kode</th><th>Nama</th><th>Harga</th><th>Stok</th></tr></thead>
+                <tbody id="inventoryTable"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <div class="tab-pane fade" id="supply">
-      <div class="card p-4 mx-auto" style="max-width: 500px;">
-        <h6 class="fw-bold">Update Stok Masuk</h6>
-        <input type="text" id="supKode" class="form-control mb-2" placeholder="Kode Barcode">
-        <input type="number" id="supJumlah" class="form-control mb-3" placeholder="Jumlah Barang Datang">
-        <button class="btn btn-success w-100" onclick="updateSupply()">Tambahkan Stok</button>
+      <div class="card p-5 mx-auto" style="max-width: 500px;">
+        <h5 class="fw-bold text-center mb-4"><i class="bi bi-truck"></i> Update Barang Masuk</h5>
+        <button class="btn btn-outline-primary mb-3" onclick="startScan('reader-supply')"><i class="bi bi-upc-scan"></i> Scan Barang Masuk</button>
+        <div id="reader-supply" style="display:none;" class="mb-3"></div>
+        <label class="small fw-bold">Kode Barang</label>
+        <input type="text" id="supKode" class="form-control mb-3" placeholder="Kode Terdeteksi">
+        <label class="small fw-bold">Jumlah Masuk</label>
+        <input type="number" id="supJumlah" class="form-control mb-4" placeholder="Qty">
+        <button class="btn btn-success w-100 py-2 fw-bold" onclick="updateSupply()">TAMBAH STOK</button>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="riwayat">
+      <div class="card p-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-clock-history"></i> 50 Transaksi Terakhir</h5>
+        <div class="table-responsive" style="max-height: 400px;">
+          <table class="table table-striped table-hover align-middle text-sm">
+            <thead class="table-dark sticky-top"><tr><th>Waktu</th><th>ID Struk</th><th>Item</th><th>Qty</th><th>Harga Akhir</th><th>Metode</th></tr></thead>
+            <tbody id="historyTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="dashboard">
+      <div class="row g-4 text-center">
+        <div class="col-md-4">
+          <div class="card p-4 border-bottom border-5 border-primary">
+            <h6 class="text-muted fw-bold">Total Jenis Produk</h6>
+            <h1 class="fw-bold mt-2" id="dashTotalItem">0</h1>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card p-4 border-bottom border-5 border-danger">
+            <h6 class="text-muted fw-bold">Stok Tipis (< 5)</h6>
+            <h1 class="fw-bold mt-2 text-danger" id="dashLowStock">0</h1>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card p-4 border-bottom border-5 border-success">
+            <h6 class="text-muted fw-bold">Valuasi Aset</h6>
+            <h3 class="fw-bold mt-3 text-success" id="dashValuasi">Rp 0</h3>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -145,34 +183,43 @@
 </div>
 
 <div id="printArea"></div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   // ==========================================
-  const API_URL = "https://script.google.com/macros/s/AKfycbxXJWkBYqz7hvV6e_4c213hufFHPnttiQiEneSl3uWEmWealU-bs16nXtE99gIZdBsZig/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbwKQQudHo399yYG4D6xMXAd7fciJjTIRdJcRqkQpASBSbfnK-7HecNXVtIA4qpaFi9ylQ/exec";
   // ==========================================
 
-  let dbProduk = []; let cart = []; let scanner;
-  let summary = { subtotal: 0, diskon: 0, pajak: 0, grandTotal: 0 };
+  let dbProduk = []; let dbJual = []; let cart = []; let scanner;
+  let summary = { subtotal: 0, diskon: 0, grandTotal: 0 };
 
+  // 1. FUNGSI UTAMA (INIT)
   async function muatData() {
     try {
       const res = await fetch(API_URL);
       const data = await res.json();
       dbProduk = data.produk.length > 0 ? data.produk.slice(1) : [];
-      document.getElementById('koneksiBadge').className = "badge bg-success p-2";
-      document.getElementById('koneksiBadge').innerText = "Online";
-      renderTables();
-    } catch (e) { document.getElementById('koneksiBadge').className = "badge bg-danger p-2"; document.getElementById('koneksiBadge').innerText = "Offline"; }
+      dbJual = data.penjualan.length > 0 ? data.penjualan.slice(1) : [];
+      
+      let b = document.getElementById('koneksiBadge');
+      b.innerHTML = '<i class="bi bi-check-circle"></i> Online'; b.className = "badge bg-success p-2";
+      
+      renderTables(); updateDashboard(); renderRiwayat();
+    } catch (e) { 
+      let b = document.getElementById('koneksiBadge');
+      b.innerHTML = '<i class="bi bi-wifi-off"></i> Offline'; b.className = "badge bg-danger p-2";
+    }
   }
 
-  // Scanner Universal
+  // 2. SCANNER & INPUT
   function startScan(id) {
     document.getElementById(id).style.display = 'block';
     if(scanner) scanner.clear();
     scanner = new Html5QrcodeScanner(id, { fps: 10, qrbox: 250 });
     scanner.render((txt) => {
       if(id === 'reader-kasir') addToCart(txt);
+      if(id === 'reader-reg') document.getElementById('regKode').value = txt;
+      if(id === 'reader-supply') document.getElementById('supKode').value = txt;
       scanner.clear(); document.getElementById(id).style.display = 'none';
     });
   }
@@ -181,15 +228,15 @@
     if (e.key === 'Enter') { addToCart(this.value.trim()); this.value = ''; }
   });
 
-  // Fitur KASIR
+  // 3. LOGIKA KASIR
   function addToCart(kode) {
     const item = dbProduk.find(p => String(p[0]) === String(kode));
-    if(!item) return alert("Barang Tidak Ditemukan!");
+    if(!item) return alert("Barang Tidak Dikenali!");
     if(item[3] <= 0) return alert("Stok Habis!");
 
     const inCart = cart.find(c => c.kode === item[0]);
     if(inCart) { inCart.qty++; inCart.subtotal = inCart.qty * inCart.harga; }
-    else { cart.push({ kode: item[0], nama: item[1], harga: item[2], qty: 1, subtotal: item[2] }); }
+    else { cart.push({ kode: item[0], nama: item[1], harga: Number(item[2]), qty: 1, subtotal: Number(item[2]) }); }
     renderCart();
   }
 
@@ -198,10 +245,10 @@
     cart.forEach((c, i) => {
       summary.subtotal += c.subtotal;
       h += `<tr>
-        <td class="fw-bold">${c.nama}</td><td>${c.harga.toLocaleString()}</td>
+        <td class="fw-bold text-secondary">${c.nama}</td><td>${c.harga.toLocaleString()}</td>
         <td><input type="number" class="form-control form-control-sm text-center" value="${c.qty}" onchange="updateQty(${i}, this.value)"></td>
         <td class="fw-bold">${c.subtotal.toLocaleString()}</td>
-        <td><button class="btn btn-sm btn-danger py-0" onclick="cart.splice(${i},1);renderCart()"><i class="bi bi-x"></i></button></td>
+        <td><button class="btn btn-sm btn-outline-danger border-0" onclick="cart.splice(${i},1);renderCart()"><i class="bi bi-trash"></i></button></td>
       </tr>`;
     });
     document.getElementById('cartTable').innerHTML = h;
@@ -216,15 +263,10 @@
 
   function kalkulasiTotal() {
     summary.diskon = Number(document.getElementById('inputDiskon').value) || 0;
-    let persenPajak = Number(document.getElementById('inputPajak').value) || 0;
-    
-    let subSetelahDiskon = summary.subtotal - summary.diskon;
-    summary.pajak = subSetelahDiskon * (persenPajak / 100);
-    summary.grandTotal = subSetelahDiskon + summary.pajak;
+    summary.grandTotal = summary.subtotal - summary.diskon;
 
     document.getElementById('lblSubtotal').innerText = "Rp " + summary.subtotal.toLocaleString();
     document.getElementById('lblDiskon').innerText = "Rp " + summary.diskon.toLocaleString();
-    document.getElementById('lblPajak').innerText = "Rp " + summary.pajak.toLocaleString();
     document.getElementById('grandTotal').innerText = "Rp " + summary.grandTotal.toLocaleString();
 
     let bayar = Number(document.getElementById('uangBayar').value) || 0;
@@ -235,53 +277,51 @@
     else { uiKembali.innerText = "Rp " + kembali.toLocaleString(); uiKembali.className = "text-success"; }
   }
 
-  // FITUR ADVANCED POS
   function holdBill() {
     if(cart.length === 0) return alert("Keranjang Kosong!");
     localStorage.setItem('hold_bill', JSON.stringify(cart));
-    cart = []; renderCart(); alert("Transaksi Ditahan!");
+    cart = []; document.getElementById('inputDiskon').value = 0; renderCart(); alert("Transaksi Ditahan sementara!");
   }
 
   function recallBill() {
     let saved = localStorage.getItem('hold_bill');
     if(!saved) return alert("Tidak ada transaksi tertahan.");
-    cart = JSON.parse(saved);
-    localStorage.removeItem('hold_bill');
-    renderCart(); alert("Transaksi Dibuka Kembali!");
+    cart = JSON.parse(saved); localStorage.removeItem('hold_bill'); renderCart();
   }
 
   function voidBill() {
-    if(confirm("Yakin ingin membatalkan/void seluruh transaksi ini?")) {
-      cart = []; document.getElementById('inputDiskon').value = 0; document.getElementById('inputPajak').value = 0;
-      renderCart();
+    if(confirm("Yakin ingin mengosongkan keranjang (Void)?")) {
+      cart = []; document.getElementById('inputDiskon').value = 0; renderCart();
     }
   }
 
+  // 4. CHECKOUT & PRINT
   async function checkout() {
     if(cart.length === 0) return alert("Keranjang Kosong!");
-    document.getElementById('btnCheckout').innerText = "MEMPROSES...";
+    let btn = document.getElementById('btnCheckout');
+    btn.innerHTML = "MEMPROSES..."; btn.disabled = true;
     
     let payload = {
-      tipe: "transaksi", item: cart,
-      diskon: summary.diskon, pajak: summary.pajak, totalAkhir: summary.grandTotal,
-      metodeBayar: document.getElementById('metodeBayar').value
+      tipe: "transaksi", item: cart, diskon: summary.diskon, 
+      totalAkhir: summary.grandTotal, metodeBayar: document.getElementById('metodeBayar').value
     };
 
     try {
       await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
-      cetakStrukArea();
-      cart = []; document.getElementById('uangBayar').value = ""; renderCart(); muatData();
-    } catch (e) { alert("Gagal transaksi!"); }
-    document.getElementById('btnCheckout').innerHTML = '<i class="bi bi-printer"></i> PROSES TRANSAKSI';
+      cetakStruk();
+      cart = []; document.getElementById('uangBayar').value = ""; document.getElementById('inputDiskon').value = 0;
+      renderCart(); await muatData(); // Refresh data dari server
+    } catch (e) { alert("Gagal menyimpan ke server!"); }
+    btn.innerHTML = '<i class="bi bi-printer"></i> PROSES & CETAK STRUK'; btn.disabled = false;
   }
 
-  function cetakStrukArea() {
+  function cetakStruk() {
     let tgl = new Date().toLocaleString('id-ID');
     let mtd = document.getElementById('metodeBayar').value;
     let byr = Number(document.getElementById('uangBayar').value) || summary.grandTotal;
     
-    let html = `<div style="width: 250px; margin: auto; padding: 10px;">
-      <div style="text-align:center; border-bottom: 2px dashed #000; margin-bottom:10px;">
+    let html = `<div style="width: 250px; margin: auto; padding: 10px; font-family: monospace; font-size: 13px;">
+      <div style="text-align:center; border-bottom: 2px dashed #000; padding-bottom:10px; margin-bottom:10px;">
         <h3 style="margin:0;">POS WIJAYA</h3><small>${tgl}</small>
       </div><table style="width:100%; border-collapse:collapse;">`;
       
@@ -290,33 +330,55 @@
                <tr><td>${c.qty} x ${c.harga.toLocaleString()}</td><td align="right">${c.subtotal.toLocaleString()}</td></tr>`;
     });
 
-    html += `</table><hr style="border-top:1px dashed #000;">
+    html += `</table><hr style="border-top:1px dashed #000; margin:10px 0;">
       <table width="100%">
-        <tr><td>Subtotal</td><td align="right">${summary.subtotal.toLocaleString()}</td></tr>
-        <tr><td>Diskon</td><td align="right">-${summary.diskon.toLocaleString()}</td></tr>
-        <tr><td>PPN</td><td align="right">+${summary.pajak.toLocaleString()}</td></tr>
-        <tr><td><b>TOTAL</b></td><td align="right"><b>Rp ${summary.grandTotal.toLocaleString()}</b></td></tr>
+        <tr><td>Subtotal</td><td align="right">${summary.subtotal.toLocaleString()}</td></tr>`;
+    
+    if(summary.diskon > 0) { html += `<tr><td>Diskon</td><td align="right">-${summary.diskon.toLocaleString()}</td></tr>`; }
+        
+    html += `<tr><td><b>TOTAL</b></td><td align="right"><b>Rp ${summary.grandTotal.toLocaleString()}</b></td></tr>
         <tr><td>BAYAR (${mtd})</td><td align="right">${byr.toLocaleString()}</td></tr>
         <tr><td>KEMBALI</td><td align="right">${(byr - summary.grandTotal).toLocaleString()}</td></tr>
       </table><div style="text-align:center; margin-top:20px;">Layanan Kasir Terintegrasi</div></div>`;
       
-    document.getElementById('printArea').innerHTML = html; window.print();
+    document.getElementById('printArea').innerHTML = html;
+    window.print();
   }
 
-  // Inventori & Supply Basic
+  // 5. INVENTORI, SUPPLY, RIWAYAT, DASHBOARD
   async function simpanBarangBaru() {
     let d = { tipe: "tambah_produk", kode: document.getElementById('regKode').value, nama: document.getElementById('regNama').value, harga: document.getElementById('regHarga').value, stok: document.getElementById('regStok').value };
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify(d) }); alert("Tersimpan!"); muatData();
+    if(!d.kode || !d.nama) return alert("Kode dan Nama wajib diisi!");
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify(d) }); alert("Tersimpan!"); 
+    document.getElementById('regKode').value=""; document.getElementById('regNama').value="";
+    muatData();
   }
+
   async function updateSupply() {
     let d = { tipe: "supply_stok", kode: document.getElementById('supKode').value, jumlah: document.getElementById('supJumlah').value };
+    if(!d.kode || !d.jumlah) return alert("Isi kode dan jumlah!");
     await fetch(API_URL, { method: 'POST', body: JSON.stringify(d) }); alert("Stok Ditambah!"); muatData();
   }
+
   function renderTables() {
     let h = ''; dbProduk.forEach(p => {
-      h += `<tr><td>${p[0]}</td><td class="fw-bold">${p[1]}</td><td>${p[2].toLocaleString()}</td><td>${p[3]}</td></tr>`;
+      let b = p[3] < 5 ? `<span class="badge bg-danger">${p[3]}</span>` : `<span class="badge bg-success">${p[3]}</span>`;
+      h += `<tr><td>${p[0]}</td><td class="fw-bold">${p[1]}</td><td>${Number(p[2]).toLocaleString()}</td><td>${b}</td></tr>`;
     });
     document.getElementById('inventoryTable').innerHTML = h;
+  }
+
+  function renderRiwayat() {
+    let h = ''; dbJual.forEach(j => {
+      h += `<tr><td><small>${j[0]}</small></td><td><span class="badge bg-secondary">${j[1]}</span></td><td class="fw-bold">${j[3]}</td><td>${j[5]}</td><td class="text-success fw-bold">Rp ${Number(j[8]).toLocaleString()}</td><td>${j[9]}</td></tr>`;
+    });
+    document.getElementById('historyTable').innerHTML = h;
+  }
+
+  function updateDashboard() {
+    document.getElementById('dashTotalItem').innerText = dbProduk.length;
+    document.getElementById('dashLowStock').innerText = dbProduk.filter(p => p[3] < 5).length;
+    document.getElementById('dashValuasi').innerText = "Rp " + dbProduk.reduce((acc, p) => acc + (Number(p[2]) * Number(p[3])), 0).toLocaleString();
   }
 
   window.onload = muatData;
